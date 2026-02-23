@@ -3,55 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャカシャカ・オールスターズ</title>
+    <title>シャカシャカ・リアル比率版</title>
     <style>
         html, body { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
             overflow: hidden; position: fixed; background: #f0f0f0;
+            touch-action: none;
         }
-        /* 画像を包む箱の設定 */
         .box {
-            width: 80px; height: 80px; /* 少し小さめにしてたくさん入るように */
             position: absolute;
-            display: flex; justify-content: center; align-items: center;
-            touch-action: none; /* ブラウザの標準動作を無効化 */
+            will-change: transform;
+            display: inline-block;
         }
-        .box img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
-        
+        .box img { 
+            width: 100px; /* 横幅を100pxに固定 */
+            height: auto; /* 縦は元の比率を維持！ */
+            display: block;
+            pointer-events: none; 
+            user-select: none;
+        }
         button {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             padding: 20px 40px; font-size: 20px; z-index: 1000;
             border-radius: 50px; border: none; background: #333; color: white;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
 
-    <button id="startBtn">全員集合！シャカシャカ開始 🚀</button>
+    <button id="startBtn">シャカシャカ開始！ 🔥</button>
 
     <script>
         const boxes = [];
         const btn = document.getElementById('startBtn');
-        const numImages = 9; // 1.png 〜 9.png
+        const numImages = 9;
+        const FIXED_WIDTH = 100;
 
-        // 1. 画像たちの準備
+        // 画像の読み込みを待ってからサイズを取得する
         for (let i = 1; i <= numImages; i++) {
             const div = document.createElement('div');
             div.className = 'box';
-            div.innerHTML = `<img src="${i}.png">`;
+            const img = new Image();
+            img.src = `${i}.png`;
+            div.appendChild(img);
             document.body.appendChild(div);
 
-            // 各画像の初期状態
-            boxes.push({
+            const data = {
                 el: div,
-                px: Math.random() * (window.innerWidth - 80),
-                py: Math.random() * (window.innerHeight - 80),
+                px: Math.random() * (window.innerWidth - FIXED_WIDTH),
+                py: Math.random() * (window.innerHeight - FIXED_WIDTH),
                 vx: 0, vy: 0,
                 angle: Math.random() * 360,
                 va: 0,
+                w: FIXED_WIDTH,
+                h: 0, // 後で取得
                 isDragging: false
-            });
+            };
+
+            img.onload = () => {
+                // 横幅100pxに対しての縦幅を計算
+                const ratio = img.naturalHeight / img.naturalWidth;
+                data.h = FIXED_WIDTH * ratio;
+            };
+            boxes.push(data);
         }
 
         btn.addEventListener('click', () => {
@@ -62,50 +76,47 @@
         });
 
         function run() {
-            // センサーの力を全員に伝える
             window.addEventListener("devicemotion", (e) => {
                 let ag = e.accelerationIncludingGravity;
                 if (!ag.x) return;
                 boxes.forEach(b => {
                     if (!b.isDragging) {
-                        b.vx -= ag.x * 0.6; // 少し重めに調整
+                        b.vx -= ag.x * 0.6;
                         b.vy += ag.y * 0.6;
-                        b.va += ag.x * 0.4;
+                        b.va += ag.x * 0.3;
                     }
                 });
             });
 
-            // タッチ操作（触った画像だけ掴めるようにする）
-            boxes.forEach(b => {
-                b.el.addEventListener('touchstart', (e) => {
-                    b.isDragging = true;
-                    b.vx = 0; b.vy = 0; b.va = 0;
-                });
-                window.addEventListener('touchmove', (e) => {
-                    if (!b.isDragging) return;
-                    let touch = Array.from(e.touches).find(t => t.target === b.el || b.el.contains(t.target));
-                    if (touch) {
-                        b.px = touch.clientX - 40;
-                        b.py = touch.clientY - 40;
+            function checkCollision() {
+                for (let i = 0; i < boxes.length; i++) {
+                    for (let j = i + 1; j < boxes.length; j++) {
+                        let b1 = boxes[i]; let b2 = boxes[j];
+                        // 簡易的な矩形衝突判定
+                        if (b1.px < b2.px + b2.w && b1.px + b1.w > b2.px &&
+                            b1.py < b2.py + b2.h && b1.py + b1.h > b2.py) {
+                            let midX = (b1.vx - b2.vx) * 0.5;
+                            let midY = (b1.vy - b2.vy) * 0.5;
+                            b1.vx -= midX; b1.vy -= midY;
+                            b2.vx += midX; b2.vy += midY;
+                        }
                     }
-                }, {passive: false});
-                window.addEventListener('touchend', () => { b.isDragging = false; });
-            });
+                }
+            }
 
             function update() {
+                checkCollision();
                 boxes.forEach(b => {
-                    if (!b.isDragging) {
-                        b.vx *= 0.95; b.vy *= 0.95; b.va *= 0.92;
+                    if (!b.isDragging && b.h > 0) {
+                        b.vx *= 0.95; b.vy *= 0.95; b.va *= 0.94;
                         b.px += b.vx; b.py += b.vy; b.angle += b.va;
 
-                        const size = 80;
-                        // 壁との衝突判定
-                        if (b.px < 0) { b.px = 0; b.vx *= -0.7; b.va += b.vy * 0.1; }
-                        if (b.px > window.innerWidth - size) { b.px = window.innerWidth - size; b.vx *= -0.7; b.va -= b.vy * 0.1; }
-                        if (b.py < 0) { b.py = 0; b.vy *= -0.7; b.va -= b.vx * 0.1; }
-                        if (b.py > window.innerHeight - size) { b.py = window.innerHeight - size; b.vy *= -0.7; b.va += b.vx * 0.1; }
+                        if (b.px < 0) { b.px = 0; b.vx *= -0.7; }
+                        if (b.px > window.innerWidth - b.w) { b.px = window.innerWidth - b.w; b.vx *= -0.7; }
+                        if (b.py < 0) { b.py = 0; b.vy *= -0.7; }
+                        if (b.py > window.innerHeight - b.h) { b.py = window.innerHeight - b.h; b.vy *= -0.7; }
                     }
-                    b.el.style.transform = `translate(${b.px}px, ${py = b.py}px) rotate(${b.angle}deg)`;
+                    b.el.style.transform = `translate(${b.px}px, ${b.py}px) rotate(${b.angle}deg)`;
                 });
                 requestAnimationFrame(update);
             }
