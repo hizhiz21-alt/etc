@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャ</title>
+    <title>シャカシャカするやつ</title>
     <style>
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; background: #f0f0f0; touch-action: none; }
         .box { position: absolute; will-change: transform; left: 0; top: 0; cursor: grab; display: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); }
@@ -128,17 +128,15 @@
                         b.vx -= ag.x * 0.6 * flip; 
                         b.vy += ag.y * 0.6 * flip;
                         
-                        // 激しく動いているとき（加速度が一定以上の時）だけ、速度に応じて回転を加える
                         const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
                         if (speed > 5) {
-                            b.va += (b.vx * 0.05); // 横の動きに合わせて回転
+                            b.va += (b.vx * 0.05);
                         }
                     }
                 });
             });
 
             function update() {
-                // シンプルな衝突判定のみ（気持ち悪い「強力な押し出し」を削除）
                 for (let i = 0; i < boxes.length; i++) {
                     for (let j = i + 1; j < boxes.length; j++) {
                         let a = boxes[i], b = boxes[j];
@@ -147,13 +145,30 @@
                         let dx = (b.px + b.w/2) - (a.px + a.w/2);
                         let dy = (b.py + b.h/2) - (a.py + a.h/2);
                         let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                        let minDist = (a.w + b.w) * 0.45;
+                        let minDist = (a.w + b.w) * 0.48;
 
                         if (dist < minDist) {
+                            let overlap = (minDist - dist);
                             let nx = dx / dist;
                             let ny = dy / dist;
-                            if (!a.isDragging) { a.vx -= nx * 0.2; a.vy -= ny * 0.2; }
-                            if (!b.isDragging) { b.vx += nx * 0.2; b.vy += ny * 0.2; }
+                            
+                            // 速度の反発（アクリル同士がコツンと当たる感覚）
+                            let relativeVx = b.vx - a.vx;
+                            let relativeVy = b.vy - a.vy;
+                            let velAlongNormal = relativeVx * nx + relativeVy * ny;
+
+                            if (velAlongNormal < 0) {
+                                let impulse = -1.2 * velAlongNormal;
+                                impulse /= 2;
+                                if (!a.isDragging) { a.vx -= nx * impulse; a.vy -= ny * impulse; }
+                                if (!b.isDragging) { b.vx += nx * impulse; b.vy += ny * impulse; }
+                            }
+
+                            // 物理的な重なり解消（最小限の押し出し）
+                            let moveX = nx * overlap * 0.5;
+                            let moveY = ny * overlap * 0.5;
+                            if (!a.isDragging) { a.px -= moveX; a.py -= moveY; }
+                            if (!b.isDragging) { b.px += moveX; b.py += moveY; }
                         }
                     }
                 }
