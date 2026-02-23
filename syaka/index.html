@@ -156,8 +156,8 @@
                         let minDist = ((a.w + b.w) / 4 + (a.h + b.h) / 4) * 0.82; 
                         if (dist < minDist) {
                             let force = (minDist - dist) / dist;
-                            let mx = dx * force * 0.45; 
-                            let my = dy * force * 0.45;
+                            let mx = dx * force * 0.2; 
+                            let my = dy * force * 0.2;
                             if(!a.isDragging) { a.vx -= mx; a.vy -= my; a.va += mx * 0.01; }
                             if(!b.isDragging) { b.vx += mx; b.vy += my; b.va -= mx * 0.01; }
                         }
