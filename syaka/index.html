@@ -3,148 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャカシャカ・ノンストップ</title>
+    <title>シャカシャカ</title>
     <style>
-        html, body { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; position: fixed; background: #f0f0f0;
-            touch-action: none;
-        }
-        .box {
-            position: absolute;
-            will-change: transform;
-            display: inline-block;
-            transition: none; /* 勝手なアニメをオフ */
-        }
-        .box img { 
-            width: 100px; /* 横幅固定 */
-            height: auto; 
-            display: block;
-            pointer-events: none; 
-            user-select: none;
-        }
-        button {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            padding: 20px 40px; font-size: 20px; z-index: 1000;
-            border-radius: 50px; border: none; background: #333; color: white;
-        }
+        html, body { margin: 0; overflow: hidden; position: fixed; width: 100%; height: 100%; background: #f0f0f0; touch-action: none; }
+        .box { position: absolute; will-change: transform; }
+        .box img { width: 100px; height: auto; display: block; pointer-events: none; }
+        /* 画像がない時の代わりの箱 */
+        .no-img { width: 100px; height: 100px; background: #ccc; display: flex; justify-content: center; align-items: center; font-size: 40px; }
+        button { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px; z-index: 1000; }
     </style>
 </head>
 <body>
-
-    <button id="startBtn">シャカシャカ開始！ 🔥</button>
-
+    <button id="startBtn">スタート！ 🔥</button>
     <script>
         const boxes = [];
-        const btn = document.getElementById('startBtn');
-        const numImages = 9;
-        const FIXED_WIDTH = 100;
-
-        // 全画像が読み込まれたかチェックする用
-        let loadedCount = 0;
+        // ここを 1〜2 など、今持ってる枚数に合わせて変えるだけでOK！
+        const numImages = 9; 
 
         for (let i = 1; i <= numImages; i++) {
             const div = document.createElement('div');
             div.className = 'box';
+            
             const img = new Image();
             img.src = `${i}.png`;
+            // 画像が見つからなかったら文字を出す
+            img.onerror = () => {
+                div.innerHTML = `<div class="no-img">📷</div>`;
+                data.h = 100;
+            };
+            img.onload = () => { data.h = 100 * (img.naturalHeight / img.naturalWidth); };
+            
             div.appendChild(img);
             document.body.appendChild(div);
 
             const data = {
-                el: div,
-                px: Math.random() * (window.innerWidth - FIXED_WIDTH),
-                py: Math.random() * (window.innerHeight - FIXED_WIDTH),
-                vx: (Math.random() - 0.5) * 5,
-                vy: (Math.random() - 0.5) * 5,
-                angle: Math.random() * 360,
-                va: 0,
-                w: FIXED_WIDTH,
-                h: 0,
-                isDragging: false
-            };
-
-            img.onload = () => {
-                const ratio = img.naturalHeight / img.naturalWidth;
-                data.h = FIXED_WIDTH * ratio;
-                loadedCount++;
+                el: div, px: Math.random()*200, py: Math.random()*200,
+                vx: 0, vy: 0, angle: 0, va: 0, w: 100, h: 100, isDragging: false
             };
             boxes.push(data);
         }
 
-        btn.addEventListener('click', () => {
-            if (loadedCount < numImages) {
-                alert("画像を読み込み中です。もう一度押してみて！");
-                return;
-            }
+        document.getElementById('startBtn').onclick = function() {
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                DeviceMotionEvent.requestPermission().then(state => { if (state === 'granted') run(); });
+                DeviceMotionEvent.requestPermission().then(run);
             } else { run(); }
-            btn.style.display = 'none';
-        });
+            this.style.display = 'none';
+        };
 
         function run() {
             window.addEventListener("devicemotion", (e) => {
                 let ag = e.accelerationIncludingGravity;
-                if (!ag.x) return;
-                boxes.forEach(b => {
-                    if (!b.isDragging) {
-                        b.vx -= ag.x * 0.7;
-                        b.vy += ag.y * 0.7;
-                        b.va += ag.x * 0.4;
-                    }
+                boxes.forEach(b => { 
+                    b.vx -= ag.x * 0.7; b.vy += ag.y * 0.7; b.va += ag.x * 0.4;
                 });
             });
 
-            // 強力な衝突判定と押し出し
-            function resolveCollisions() {
-                for (let i = 0; i < boxes.length; i++) {
-                    for (let j = i + 1; j < boxes.length; j++) {
-                        let a = boxes[i];
-                        let b = boxes[j];
-
-                        // 長方形同士の重なりチェック
-                        if (a.px < b.px + b.w && a.px + a.w > b.px &&
-                            a.py < b.py + b.h && a.py + a.h > b.py) {
-                            
-                            // どっち方向に重なってるか計算
-                            let overlapX = Math.min(a.px + a.w, b.px + b.w) - Math.max(a.px, b.px);
-                            let overlapY = Math.min(a.py + a.h, b.py + b.h) - Math.max(a.py, b.py);
-
-                            if (overlapX < overlapY) {
-                                // 横方向に押し返す
-                                let dir = (a.px < b.px) ? -1 : 1;
-                                a.px += dir * overlapX * 0.5;
-                                b.px -= dir * overlapX * 0.5;
-                                a.vx *= -0.5; b.vx *= -0.5;
-                            } else {
-                                // 縦方向に押し返す
-                                let dir = (a.py < b.py) ? -1 : 1;
-                                a.py += dir * overlapY * 0.5;
-                                b.py -= dir * overlapY * 0.5;
-                                a.vy *= -0.5; b.vy *= -0.5;
-                            }
-                            // ぶつかったらちょっと回す
-                            a.va += (a.vx - b.vx) * 0.1;
-                        }
-                    }
-                }
-            }
-
             function update() {
-                resolveCollisions();
-
                 boxes.forEach(b => {
-                    if (!b.isDragging) {
-                        b.vx *= 0.94; b.vy *= 0.94; b.va *= 0.92;
-                        b.px += b.vx; b.py += b.vy; b.angle += b.va;
-
-                        // 壁判定
-                        if (b.px < 0) { b.px = 0; b.vx *= -0.8; }
-                        if (b.px > window.innerWidth - b.w) { b.px = window.innerWidth - b.w; b.vx *= -0.8; }
-                        if (b.py < 0) { b.py = 0; b.vy *= -0.8; }
-                        if (b.py > window.innerHeight - b.h) { b.py = window.innerHeight - b.h; b.vy *= -0.8; }
-                    }
+                    b.vx *= 0.95; b.vy *= 0.95; b.va *= 0.95;
+                    b.px += b.vx; b.py += b.vy; b.angle += b.va;
+                    // 壁判定
+                    if (b.px < 0) { b.px = 0; b.vx *= -0.8; }
+                    if (b.px > window.innerWidth - 100) { b.px = window.innerWidth - 100; b.vx *= -0.8; }
+                    if (b.py < 0) { b.py = 0; b.vy *= -0.8; }
+                    if (b.py > window.innerHeight - b.h) { b.py = window.innerHeight - b.h; b.vy *= -0.8; }
                     b.el.style.transform = `translate(${b.px}px, ${b.py}px) rotate(${b.angle}deg)`;
                 });
                 requestAnimationFrame(update);
