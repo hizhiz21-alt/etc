@@ -18,12 +18,11 @@
         const smallSize = 100;   
         const gachaCount = 10;   
         
-        // --- 物理設定の調整 (もっさり解消) ---
-        const FRICTION = 0.95;      
-        const ROT_FRICTION = 0.93;  
+        const FRICTION = 0.96;      
+        const ROT_FRICTION = 0.94;  
         const BOUNCE = 0.5;
-        const GRAVITY = 0.5;        // 重力を少し強めてキビキビ動かす
-        const MAX_SPEED = 16;       
+        const GRAVITY = 0.6;        
+        const MAX_SPEED = 18;       
 
         const boxes = [];
         const btn = document.getElementById('startBtn');
@@ -35,15 +34,14 @@
             return 4;                      
         }
 
-        // 1, 2, 3 を先に生成し、z-indexを高く設定
-        for (let i = 1; i <= 3; i++) createBox(i, i <= 2 ? size : smallSize, 100);
+        for (let i = 1; i <= 3; i++) createBox(i, i <= 2 ? size : smallSize, 100 + i);
         for (let i = 0; i < gachaCount; i++) createBox(pickGachaImage(), smallSize, 10);
 
         function createBox(imgNum, currentWidth, zIndex) {
             const div = document.createElement('div');
             div.className = 'box';
             div.style.width = currentWidth + 'px';
-            div.style.zIndex = zIndex; // 重なり順を指定
+            div.style.zIndex = zIndex; 
             const img = new Image();
             img.src = `${imgNum}.png`;
             div.appendChild(img);
@@ -61,8 +59,8 @@
             window.addEventListener('touchmove', (e) => {
                 if (!data.isDragging) return;
                 let touch = e.touches[0];
-                data.vx = (touch.clientX - (data.w / 2) - data.px) * 0.25;
-                data.vy = (touch.clientY - (data.h / 2) - data.py) * 0.25;
+                data.vx = (touch.clientX - (data.w / 2) - data.px) * 0.3;
+                data.vy = (touch.clientY - (data.h / 2) - data.py) * 0.3;
                 data.px = touch.clientX - (data.w / 2);
                 data.py = touch.clientY - (data.h / 2);
             }, {passive: false});
@@ -74,7 +72,7 @@
             boxes.forEach(b => {
                 b.px = Math.random() * (window.innerWidth - b.w);
                 b.py = -500 - (Math.random() * 1000); 
-                b.vy = 12 + Math.random() * 10;
+                b.vy = 15 + Math.random() * 10;
                 b.va = (Math.random() - 0.5) * 10;
                 b.el.style.display = 'block';
             });
@@ -91,12 +89,12 @@
             window.addEventListener("devicemotion", (e) => {
                 let ag = e.accelerationIncludingGravity;
                 if(!ag || !ag.x) return;
-                let ax = Math.abs(ag.x) > 1.0 ? ag.x : 0;
-                let ay = Math.abs(ag.y) > 1.0 ? ag.y : 0;
+                let ax = Math.abs(ag.x) > 0.8 ? ag.x : 0;
+                let ay = Math.abs(ag.y) > 0.8 ? ag.y : 0;
                 boxes.forEach(b => { 
                     if (!b.isDragging) {
-                        b.vx -= ax * 0.7 * flip; 
-                        b.vy += ay * 0.7 * flip;
+                        b.vx -= ax * 0.8 * flip; 
+                        b.vy += ay * 0.8 * flip;
                     }
                 });
             });
@@ -110,12 +108,13 @@
                         let dy = (b.py + b.h/2) - (a.py + a.h/2);
                         let dist = Math.sqrt(dx * dx + dy * dy);
                         
-                        // --- めり込みすぎないよう 0.8倍に調整 ---
-                        let minDist = ((a.w + b.w) / 4 + (a.h + b.h) / 4) * 0.8; 
+                        let minDist = ((a.w + b.w) / 4 + (a.h + b.h) / 4) * 0.82; 
                         if (dist < minDist) {
-                            let force = (minDist - dist) / dist;
-                            let mx = dx * force * 0.35;
-                            let my = dy * force * 0.35;
+                            // スタック防止：重なりが深いほど反発を強くする
+                            let overlap = minDist - dist;
+                            let force = overlap / dist;
+                            let mx = dx * force * 0.45; 
+                            let my = dy * force * 0.45;
                             if(!a.isDragging) { a.vx -= mx; a.vy -= my; a.va += mx * 0.02; }
                             if(!b.isDragging) { b.vx += mx; b.vy += my; b.va -= mx * 0.02; }
                         }
@@ -141,7 +140,7 @@
                         if (b.py > window.innerHeight - b.h) { 
                             b.py = window.innerHeight - b.h; 
                             b.vy *= -BOUNCE; 
-                            if(Math.abs(b.vy) < 1) b.vy = 0;
+                            if(Math.abs(b.vy) < 1.2) b.vy = 0;
                         }
                     }
                     b.el.style.transform = `translate(${b.px}px, ${b.py}px) rotate(${b.angle}deg)`;
