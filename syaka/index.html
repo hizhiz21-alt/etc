@@ -12,27 +12,37 @@
     </style>
 </head>
 <body>
-    <button id="startBtn">スタート</button>
+    <button id="startBtn">スタート 🔥</button>
     <script>
         // --- 設定エリア ---
-        const size = 130;      // 1〜2枚目のサイズ（一回り大きく！）
-        const smallSize = 80; // 3〜9枚目のサイズ（少し小さめに）
-        const numImages = 9;
+        const size = 180;        // 1〜2枚目のサイズ
+        const smallSize = 100;   // 3枚目以降のサイズ
+        const copyCount = 10;    // 【新機能】4.png を何枚出すか？（今は10枚）
+        
+        const FRICTION = 0.92;      
+        const ROT_FRICTION = 0.88;  
+        const BOUNCE = 0.6;         
         // ----------------
 
         const boxes = [];
         const btn = document.getElementById('startBtn');
 
-        for (let i = 1; i <= numImages; i++) {
+        // 合計枚数：固有画像(3枚) + 4.pngのコピー数
+        const totalNum = 3 + copyCount;
+
+        for (let i = 1; i <= totalNum; i++) {
             const div = document.createElement('div');
             div.className = 'box';
             
-            // 3枚目(i=3)以降は小さいサイズを適用
+            // サイズ設定：1〜2枚目は大きく、3枚目以降は小さく
             const currentWidth = (i >= 3) ? smallSize : size;
             div.style.width = currentWidth + 'px';
             
             const img = new Image();
-            img.src = `${i}.png`;
+            // 画像名の決定：1, 2, 3 まではそのまま。それ以降は全部 4.png
+            const imgNum = (i <= 3) ? i : 4;
+            img.src = `${imgNum}.png`;
+            
             div.appendChild(img);
             document.body.appendChild(div);
 
@@ -40,23 +50,17 @@
                 el: div, 
                 px: Math.random() * (window.innerWidth - currentWidth), 
                 py: Math.random() * (window.innerHeight - currentWidth),
-                vx: (Math.random() - 0.5) * 10,
-                vy: (Math.random() - 0.5) * 10,
-                angle: Math.random() * 360,
-                va: (Math.random() - 0.5) * 5,
-                w: currentWidth, 
-                h: currentWidth, // onloadで更新
-                mass: (i >= 3) ? 0.8 : 1.2, // 大きい方が少し重たい動きに
+                vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, 
+                angle: Math.random() * 360, va: 0,
+                w: currentWidth, h: currentWidth,
+                mass: (i >= 3) ? 0.7 : 1.1,
                 isDragging: false
             };
 
             img.onload = () => { data.h = currentWidth * (img.naturalHeight / img.naturalWidth); };
             img.onerror = () => { img.style.display = 'none'; data.h = 0; };
 
-            div.addEventListener('touchstart', () => {
-                data.isDragging = true;
-                data.vx = 0; data.vy = 0; data.va = 0;
-            });
+            div.addEventListener('touchstart', () => { data.isDragging = true; data.vx = 0; data.vy = 0; data.va = 0; });
             window.addEventListener('touchmove', (e) => {
                 if (!data.isDragging) return;
                 let touch = Array.from(e.touches).find(t => t.target === div || div.contains(t.target));
@@ -83,9 +87,8 @@
                 if(!ag.x) return;
                 boxes.forEach(b => { 
                     if (!b.isDragging) {
-                        b.vx -= ag.x * b.mass; 
-                        b.vy += ag.y * b.mass;
-                        b.va += ag.x * (b.mass - 1);
+                        b.vx -= ag.x * b.mass * 0.8; 
+                        b.vy += ag.y * b.mass * 0.8;
                     }
                 });
             });
@@ -98,14 +101,13 @@
                         let dx = (b.px + b.w/2) - (a.px + a.w/2);
                         let dy = (b.py + b.h/2) - (a.py + a.h/2);
                         let dist = Math.sqrt(dx * dx + dy * dy);
-                        // それぞれの半径を足して判定
                         let minDist = (a.w + b.w) / 4 + (a.h + b.h) / 4; 
                         if (dist < minDist) {
                             let force = (minDist - dist) / dist;
-                            let mx = dx * force * 0.4;
-                            let my = dy * force * 0.4;
-                            if(!a.isDragging) { a.vx -= mx; a.vy -= my; a.va += mx * 0.1; }
-                            if(!b.isDragging) { b.vx += mx; b.vy += my; b.va -= mx * 0.1; }
+                            let mx = dx * force * 0.3;
+                            let my = dy * force * 0.3;
+                            if(!a.isDragging) { a.vx -= mx; a.vy -= my; a.va += mx * 0.05; }
+                            if(!b.isDragging) { b.vx += mx; b.vy += my; b.va -= mx * 0.05; }
                         }
                     }
                 }
@@ -113,12 +115,12 @@
                 boxes.forEach(b => {
                     if (b.h === 0) return;
                     if (!b.isDragging) {
-                        b.vx *= 0.94; b.vy *= 0.94; b.va *= 0.94;
+                        b.vx *= FRICTION; b.vy *= FRICTION; b.va *= ROT_FRICTION;
                         b.px += b.vx; b.py += b.vy; b.angle += b.va;
-                        if (b.px < 0) { b.px = 0; b.vx *= -0.7; }
-                        if (b.px > window.innerWidth - b.w) { b.px = window.innerWidth - b.w; b.vx *= -0.7; }
-                        if (b.py < 0) { b.py = 0; b.vy *= -0.7; }
-                        if (b.py > window.innerHeight - b.h) { b.py = window.innerHeight - b.h; b.vy *= -0.7; }
+                        if (b.px < 0) { b.px = 0; b.vx *= -BOUNCE; b.va += b.vy * 0.1; }
+                        if (b.px > window.innerWidth - b.w) { b.px = window.innerWidth - b.w; b.vx *= -BOUNCE; b.va -= b.vy * 0.1; }
+                        if (b.py < 0) { b.py = 0; b.vy *= -BOUNCE; b.va -= b.vx * 0.1; }
+                        if (b.py > window.innerHeight - b.h) { b.py = window.innerHeight - b.h; b.vy *= -BOUNCE; b.va += b.vx * 0.1; }
                     }
                     b.el.style.transform = `translate(${b.px}px, ${b.py}px) rotate(${b.angle}deg)`;
                 });
