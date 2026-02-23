@@ -3,38 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャカシャカアプリ完成版</title>
+    <title>シャカシャカ・オールスターズ</title>
     <style>
-        /* 画面を固定してスクロールさせない */
         html, body { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; position: fixed; background: #e0e0e0;
+            overflow: hidden; position: fixed; background: #f0f0f0;
         }
-        #emoji {
-            font-size: 80px; position: absolute;
-            will-change: transform; /* 動きをスムーズにするおまじない */
+        /* 画像を包む箱の設定 */
+        .box {
+            width: 80px; height: 80px; /* 少し小さめにしてたくさん入るように */
+            position: absolute;
+            display: flex; justify-content: center; align-items: center;
+            touch-action: none; /* ブラウザの標準動作を無効化 */
         }
+        .box img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+        
         button {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px 40px; font-size: 20px; z-index: 100;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            padding: 20px 40px; font-size: 20px; z-index: 1000;
             border-radius: 50px; border: none; background: #333; color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
 
-    <button id="startBtn">シャカシャカ開始！ 🔥</button>
-    <div id="emoji">🐱</div>
+    <button id="startBtn">全員集合！シャカシャカ開始 🚀</button>
 
     <script>
-        let px = window.innerWidth / 2;
-        let py = window.innerHeight / 2;
-        let vx = 0; // 横方向の速度
-        let vy = 0; // 縦方向の速度
-        
-        const emoji = document.getElementById('emoji');
+        const boxes = [];
         const btn = document.getElementById('startBtn');
+        const numImages = 9; // 1.png 〜 9.png
+
+        // 1. 画像たちの準備
+        for (let i = 1; i <= numImages; i++) {
+            const div = document.createElement('div');
+            div.className = 'box';
+            div.innerHTML = `<img src="${i}.png">`;
+            document.body.appendChild(div);
+
+            // 各画像の初期状態
+            boxes.push({
+                el: div,
+                px: Math.random() * (window.innerWidth - 80),
+                py: Math.random() * (window.innerHeight - 80),
+                vx: 0, vy: 0,
+                angle: Math.random() * 360,
+                va: 0,
+                isDragging: false
+            });
+        }
 
         btn.addEventListener('click', () => {
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -44,33 +62,52 @@
         });
 
         function run() {
-            // 重力と振りを検知（gravity を含む値を使用）
+            // センサーの力を全員に伝える
             window.addEventListener("devicemotion", (e) => {
                 let ag = e.accelerationIncludingGravity;
                 if (!ag.x) return;
+                boxes.forEach(b => {
+                    if (!b.isDragging) {
+                        b.vx -= ag.x * 0.6; // 少し重めに調整
+                        b.vy += ag.y * 0.6;
+                        b.va += ag.x * 0.4;
+                    }
+                });
+            });
 
-                // 1. スマホの傾きと振りを速度に変える
-                vx -= ag.x * 1.5; 
-                vy += ag.y * 1.5;
+            // タッチ操作（触った画像だけ掴めるようにする）
+            boxes.forEach(b => {
+                b.el.addEventListener('touchstart', (e) => {
+                    b.isDragging = true;
+                    b.vx = 0; b.vy = 0; b.va = 0;
+                });
+                window.addEventListener('touchmove', (e) => {
+                    if (!b.isDragging) return;
+                    let touch = Array.from(e.touches).find(t => t.target === b.el || b.el.contains(t.target));
+                    if (touch) {
+                        b.px = touch.clientX - 40;
+                        b.py = touch.clientY - 40;
+                    }
+                }, {passive: false});
+                window.addEventListener('touchend', () => { b.isDragging = false; });
             });
 
             function update() {
-                // 2. 摩擦（だんだん止まるようにする）
-                vx *= 0.95;
-                vy *= 0.95;
+                boxes.forEach(b => {
+                    if (!b.isDragging) {
+                        b.vx *= 0.95; b.vy *= 0.95; b.va *= 0.92;
+                        b.px += b.vx; b.py += b.vy; b.angle += b.va;
 
-                px += vx;
-                py += vy;
-
-                // 3. 壁に当たったら跳ね返る
-                const size = 80;
-                if (px < 0) { px = 0; vx *= -0.8; }
-                if (px > window.innerWidth - size) { px = window.innerWidth - size; vx *= -0.8; }
-                if (py < 0) { py = 0; vy *= -0.8; }
-                if (py > window.innerHeight - size) { py = window.innerHeight - size; vy *= -0.8; }
-
-                emoji.style.transform = `translate(${px}px, ${py}px)`;
-                requestAnimationFrame(update); // スムーズにループ
+                        const size = 80;
+                        // 壁との衝突判定
+                        if (b.px < 0) { b.px = 0; b.vx *= -0.7; b.va += b.vy * 0.1; }
+                        if (b.px > window.innerWidth - size) { b.px = window.innerWidth - size; b.vx *= -0.7; b.va -= b.vy * 0.1; }
+                        if (b.py < 0) { b.py = 0; b.vy *= -0.7; b.va -= b.vx * 0.1; }
+                        if (b.py > window.innerHeight - size) { b.py = window.innerHeight - size; b.vy *= -0.7; b.va += b.vx * 0.1; }
+                    }
+                    b.el.style.transform = `translate(${b.px}px, ${py = b.py}px) rotate(${b.angle}deg)`;
+                });
+                requestAnimationFrame(update);
             }
             update();
         }
