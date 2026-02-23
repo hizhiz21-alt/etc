@@ -16,9 +16,8 @@
     <script>
         // --- 設定エリア ---
         const size = 140;        
-        const smallSize = 90;   
-        const gachaCount = 10;   // ガチャパーツの合計数
-        
+        const smallSize = 80;   
+        const gachaCount = 10;   
         const FRICTION = 0.92;      
         const ROT_FRICTION = 0.88;  
         const BOUNCE = 0.6;         
@@ -27,20 +26,16 @@
         const boxes = [];
         const btn = document.getElementById('startBtn');
 
-        // ガチャの抽選ロジック
         function pickGachaImage() {
             const rand = Math.random() * 100;
-            if (rand < 6) return 6;        // 6% で 6.png
-            if (rand < 6 + 10) return 5;   // 10% で 5.png
-            return 4;                      // 残りは 4.png
+            if (rand < 6) return 6;        
+            if (rand < 6 + 10) return 5;   
+            return 4;                      
         }
 
-        // 1. メインの1, 2, 3枚目を生成
         for (let i = 1; i <= 3; i++) {
             createBox(i, i <= 2 ? size : smallSize);
         }
-
-        // 2. ガチャパーツを10個生成
         for (let i = 0; i < gachaCount; i++) {
             createBox(pickGachaImage(), smallSize);
         }
@@ -49,7 +44,6 @@
             const div = document.createElement('div');
             div.className = 'box';
             div.style.width = currentWidth + 'px';
-            
             const img = new Image();
             img.src = `${imgNum}.png`;
             div.appendChild(img);
@@ -59,16 +53,14 @@
                 el: div, 
                 px: Math.random() * (window.innerWidth - currentWidth), 
                 py: Math.random() * (window.innerHeight - currentWidth),
-                vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20, 
+                vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10, 
                 angle: Math.random() * 360, va: 0,
                 w: currentWidth, h: currentWidth,
                 mass: currentWidth > 150 ? 1.1 : 0.7,
                 isDragging: false
             };
-
             img.onload = () => { data.h = currentWidth * (img.naturalHeight / img.naturalWidth); };
             img.onerror = () => { img.style.display = 'none'; data.h = 0; };
-
             div.addEventListener('touchstart', () => { data.isDragging = true; data.vx = 0; data.vy = 0; data.va = 0; });
             window.addEventListener('touchmove', (e) => {
                 if (!data.isDragging) return;
@@ -79,7 +71,6 @@
                 }
             }, {passive: false});
             window.addEventListener('touchend', () => { data.isDragging = false; });
-
             boxes.push(data);
         }
 
@@ -91,13 +82,18 @@
         };
 
         function run() {
+            // iOS系（iPad/iPhone）かどうかを判定
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            const flip = isIOS ? -1 : 1;
+
             window.addEventListener("devicemotion", (e) => {
                 let ag = e.accelerationIncludingGravity;
-                if(!ag.x) return;
+                if(!ag || !ag.x) return;
                 boxes.forEach(b => { 
                     if (!b.isDragging) {
-                        b.vx -= ag.x * b.mass * 0.8; 
-                        b.vy += ag.y * b.mass * 0.8;
+                        // flip をかけて iOS の天地逆転を相殺！ Android はそのまま！
+                        b.vx -= ag.x * b.mass * 0.8 * flip; 
+                        b.vy += ag.y * b.mass * 0.8 * flip;
                     }
                 });
             });
@@ -120,7 +116,6 @@
                         }
                     }
                 }
-
                 boxes.forEach(b => {
                     if (b.h === 0) return;
                     if (!b.isDragging) {
