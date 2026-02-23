@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャカシャカ</title>
+    <title>シャカシャカするやつ</title>
     <style>
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; background: #f0f0f0; touch-action: none; }
         .box { position: absolute; will-change: transform; left: 0; top: 0; cursor: grab; display: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); }
@@ -23,7 +23,7 @@
 
     <script>
         const size = 140;        
-        const smallSize = 90;   
+        const smallSize = 100;   
         const gachaCount = 10;   
         
         const FRICTION = 0.92;      
@@ -32,7 +32,7 @@
         const GRAVITY = 0.7;        
         const MAX_SPEED = 18;       
 
-        let boxes = []; // 再代入できるように let に変更
+        let boxes = []; 
         const btn = document.getElementById('startBtn');
         const controls = document.getElementById('controls');
         const addBtn = document.getElementById('addBtn');
@@ -45,7 +45,6 @@
             return 4;                      
         }
 
-        // 初期のパーツ作成
         function initFirstSet() {
             for (let i = 1; i <= 3; i++) createBox(i, i <= 2 ? size : smallSize, 100 + i, true);
             for (let i = 0; i < gachaCount; i++) createBox(pickGachaImage(), smallSize, 10, true);
@@ -62,11 +61,11 @@
             document.body.appendChild(div);
 
             const data = {
-                el: div, px: 0, py: 0, vx: 0, vy: 0, 
+                el: div, img: img, px: 0, py: 0, vx: 0, vy: 0, 
                 angle: Math.random() * 360, va: 0,
                 w: currentWidth, h: 0,
                 isDragging: false,
-                isInitial: isInitial // 初期パーツかどうかを判定用に追加
+                isInitial: isInitial 
             };
             img.onload = () => { data.h = currentWidth * (img.naturalHeight / img.naturalWidth); };
             
@@ -111,18 +110,21 @@
             }
         };
 
-        // ↻ボタン：追加分を消して初期状態に戻す
         resetBtn.onclick = () => {
-            // 追加されたパーツを画面から削除し、配列をフィルタリング
             boxes.forEach(b => {
                 if (!b.isInitial) {
                     b.el.remove();
+                } else {
+                    // 初期10連分（画像4〜6を使用しているもの）だけ画像を再抽選
+                    // iが1〜3の固定画像はそのままにしたい場合は条件を分けますが、
+                    // ガチャ結果を変えるという意図に合わせ、pickGachaImageを使うパーツを更新
+                    if (b.w === smallSize) { 
+                        b.img.src = `${pickGachaImage()}.png`;
+                    }
+                    dropBox(b);
                 }
             });
             boxes = boxes.filter(b => b.isInitial);
-            
-            // 残った初期パーツを落下させる
-            boxes.forEach(b => dropBox(b));
         };
 
         function run() {
@@ -169,8 +171,8 @@
                         b.vy *= FRICTION;
                         
                         let moveSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-                        if (moveSpeed < 1.0) {
-                            b.va *= 0.5; 
+                        if (moveSpeed < 1.5) {
+                            b.va *= 0.3; 
                         } else {
                             b.va *= ROT_FRICTION;
                         }
