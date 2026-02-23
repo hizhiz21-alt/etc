@@ -26,10 +26,10 @@
         const gachaCount = 10;   
         
         const FRICTION = 0.95;      
-        const ROT_FRICTION = 0.85; 
+        const ROT_FRICTION = 0.92; // 回転の減衰を弱めて回りやすく
         const BOUNCE = 0.2;        
         const GRAVITY = 0.6;        
-        const MAX_SPEED = 15;
+        const MAX_SPEED = 20;
 
         let boxes = []; 
         const btn = document.getElementById('startBtn');
@@ -89,7 +89,7 @@
             b.py = -200 - (Math.random() * 400); 
             b.vx = (Math.random() - 0.5) * 15;
             b.vy = 5 + Math.random() * 10;
-            b.va = (Math.random() - 0.5) * 10;
+            b.va = (Math.random() - 0.5) * 20; // 落下時の回転を強化
             b.el.style.display = 'block';
         }
 
@@ -131,6 +131,10 @@
                     if (!b.isDragging) {
                         b.vx -= ag.x * 0.6 * flip; 
                         b.vy += ag.y * 0.6 * flip;
+                        // 振った時に回転を加える
+                        if (Math.abs(ag.x) > 2 || Math.abs(ag.y) > 2) {
+                            b.va += ag.x * 0.5 * flip;
+                        }
                     }
                 });
             });
@@ -144,22 +148,18 @@
                             let dx = (b.px + b.w/2) - (a.px + a.w/2);
                             let dy = (b.py + b.h/2) - (a.py + a.h/2);
                             let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            let minDist = (a.w + b.w) * 0.47;
+                            let minDist = (a.w + b.w) * 0.49;
                             if (dist < minDist) {
                                 let nx = dx / dist, ny = dy / dist;
                                 let rvx = b.vx - a.vx, rvy = b.vy - a.vy;
                                 let velAlongNormal = rvx * nx + rvy * ny;
                                 if (velAlongNormal < 0) {
                                     let j_impulse = -(1 + BOUNCE) * velAlongNormal * 0.5;
-                                    if (!a.isDragging) { a.vx -= nx * j_impulse; a.vy -= ny * j_impulse; }
-                                    if (!b.isDragging) { b.vx += nx * j_impulse; b.vy += ny * j_impulse; }
-                                    
-                                    // 接触抵抗：重なっているパーツ同士の回転を殺し合う
-                                    a.va *= 0.8;
-                                    b.va *= 0.8;
+                                    if (!a.isDragging) { a.vx -= nx * j_impulse; a.vy -= ny * j_impulse; a.va -= nx * 0.5; }
+                                    if (!b.isDragging) { b.vx += nx * j_impulse; b.vy += ny * j_impulse; b.va += nx * 0.5; }
                                 }
                                 let overlap = minDist - dist;
-                                let moveX = nx * overlap * 0.3, moveY = ny * overlap * 0.3;
+                                let moveX = nx * overlap * 0.45, moveY = ny * overlap * 0.45;
                                 if (!a.isDragging) { a.px -= moveX; a.py -= moveY; }
                                 if (!b.isDragging) { b.px += moveX; b.py += moveY; }
                             }
@@ -187,16 +187,17 @@
                         if (b.px < 0) { b.px = 0; b.vx *= -BOUNCE; b.va *= 0.5; }
                         if (b.px > rw) { b.px = rw; b.vx *= -BOUNCE; b.va *= 0.5; }
                         if (b.py > bh) { 
-                            b.py = bh; 
-                            b.vy *= -BOUNCE;
-                            b.va *= 0.5; 
-                            if (Math.abs(b.vy) < 0.8) b.vy = 0;
+                            b.py = bh; b.vy *= -BOUNCE;
+                            if (Math.abs(b.vy) < 0.8) {
+                                b.vy = 0;
+                                // 速度が消えたら回転も殺す（嫌な低速回転対策）
+                                if (Math.abs(b.vx) < 0.2) b.va *= 0.8;
+                            }
                         }
                         
-                        // 静止判定（速度が低いなら回転も強制停止）
-                        if (Math.abs(b.vx) < 0.12 && Math.abs(b.vy) < 0.12) {
-                            b.vx = 0;
-                            b.va *= 0.5; 
+                        // 完全に止まった時の処理
+                        if (Math.abs(b.vx) < 0.1 && Math.abs(b.vy) < 0.1 && b.py >= bh - 1) {
+                            b.va *= 0.5;
                             if (Math.abs(b.va) < 0.1) b.va = 0;
                         }
                     }
