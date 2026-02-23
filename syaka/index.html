@@ -25,11 +25,11 @@
         const smallSize = 100;   
         const gachaCount = 10;   
         
-        const FRICTION = 0.95;      
-        const ROT_FRICTION = 0.80; 
-        const BOUNCE = 0.2;        
-        const GRAVITY = 0.6;        
-        const MAX_SPEED = 20;
+        const FRICTION = 0.96;      // 少し摩擦を強めて安定化
+        const ROT_FRICTION = 0.85; 
+        const BOUNCE = 0.15;        // 反発を少し抑える
+        const GRAVITY = 0.5;        
+        const MAX_SPEED = 15;       // 速度上限を下げて爆発を防止
 
         let boxes = []; 
         const btn = document.getElementById('startBtn');
@@ -87,9 +87,9 @@
         function dropBox(b) {
             b.px = Math.random() * (window.innerWidth - b.w);
             b.py = -200 - (Math.random() * 400); 
-            b.vx = (Math.random() - 0.5) * 15;
-            b.vy = 5 + Math.random() * 10;
-            b.va = (Math.random() - 0.5) * 10;
+            b.vx = (Math.random() - 0.5) * 10;
+            b.vy = 5 + Math.random() * 5;
+            b.va = (Math.random() - 0.5) * 5;
             b.el.style.display = 'block';
         }
 
@@ -116,7 +116,7 @@
             boxes.forEach(b => {
                 if (!b.isInitial) b.el.remove();
                 else {
-                    if (b.w === smallSize && b.isInitial) b.img.src = `${pickGachaImage()}.png`;
+                    if (b.w === smallSize) b.img.src = `${pickGachaImage()}.png`;
                     dropBox(b);
                 }
             });
@@ -132,15 +132,14 @@
                 if(!ag || ag.x === null) return;
                 boxes.forEach(b => { 
                     if (!b.isDragging) {
-                        b.vx -= ag.x * 0.6 * flip; 
-                        b.vy += ag.y * 0.6 * flip;
-                        const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-                        if (speed > 5) b.va += (b.vx * 0.05);
+                        b.vx -= ag.x * 0.5 * flip; 
+                        b.vy += ag.y * 0.5 * flip;
                     }
                 });
             });
 
             function update() {
+                // 衝突計算のサブステップ
                 for (let step = 0; step < 2; step++) {
                     for (let i = 0; i < boxes.length; i++) {
                         for (let j = i + 1; j < boxes.length; j++) {
@@ -150,13 +149,13 @@
                             let dx = (b.px + b.w/2) - (a.px + a.w/2);
                             let dy = (b.py + b.h/2) - (a.py + a.h/2);
                             let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            let minDist = (a.w + b.w) * 0.48;
+                            let minDist = (a.w + b.w) * 0.47; // 重なり判定を少し緩める
 
                             if (dist < minDist) {
-                                let overlap = minDist - dist;
                                 let nx = dx / dist;
                                 let ny = dy / dist;
                                 
+                                // 相対速度による反発
                                 let rvx = b.vx - a.vx;
                                 let rvy = b.vy - a.vy;
                                 let velAlongNormal = rvx * nx + rvy * ny;
@@ -166,8 +165,12 @@
                                     if (!a.isDragging) { a.vx -= nx * j_impulse; a.vy -= ny * j_impulse; }
                                     if (!b.isDragging) { b.vx += nx * j_impulse; b.vy += ny * j_impulse; }
                                 }
-                                let moveX = nx * overlap * 0.5;
-                                let moveY = ny * overlap * 0.5;
+                                
+                                // 位置補正（荒ぶり防止のため弱めに設定）
+                                let overlap = minDist - dist;
+                                let percent = 0.3; 
+                                let moveX = nx * overlap * percent;
+                                let moveY = ny * overlap * percent;
                                 if (!a.isDragging) { a.px -= moveX; a.py -= moveY; }
                                 if (!b.isDragging) { b.px += moveX; b.py += moveY; }
                             }
@@ -182,25 +185,23 @@
                         b.vy *= FRICTION;
                         b.va *= ROT_FRICTION;
 
-                        if (Math.abs(b.vx) < 0.15) b.vx = 0;
-                        if (Math.abs(b.vy) < 0.15 && Math.abs(b.vy + GRAVITY) < 1) b.vy = 0;
-                        if (Math.abs(b.va) < 0.2) b.va = 0; 
-
+                        // 速度キャップ
                         b.vx = Math.min(Math.max(b.vx, -MAX_SPEED), MAX_SPEED);
                         b.vy = Math.min(Math.max(b.vy, -MAX_SPEED), MAX_SPEED);
 
                         b.px += b.vx;
                         b.py += b.vy;
-                        b.angle += b.va;
+                        b.angle += b.va + (b.vx * 0.5); // 速度に応じて少し回転を加える
 
                         const rw = window.innerWidth - b.w;
                         const bh = window.innerHeight - b.h;
 
-                        if (b.px < 0) { b.px = 0; b.vx *= -BOUNCE; }
-                        if (b.px > rw) { b.px = rw; b.vx *= -BOUNCE; }
+                        // 壁判定
+                        if (b.px < 0) { b.px = 0; b.vx *= -BOUNCE; b.va *= 0.5; }
+                        if (b.px > rw) { b.px = rw; b.vx *= -BOUNCE; b.va *= 0.5; }
                         if (b.py > bh) { 
                             b.py = bh; b.vy *= -BOUNCE; 
-                            if (Math.abs(b.vy) < 0.5) b.vy = 0;
+                            if (Math.abs(b.vy) < 0.8) b.vy = 0; 
                         }
                         if (b.py < -1000) b.py = -1000;
                     }
