@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャカシャカするやつ</title>
+    <title>シャ</title>
     <style>
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; background: #f0f0f0; touch-action: none; }
         .box { position: absolute; will-change: transform; left: 0; top: 0; cursor: grab; display: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); }
@@ -29,7 +29,7 @@
         const ROT_FRICTION = 0.92;  
         const BOUNCE = 0.3;         
         const GRAVITY = 0.6;        
-        const MAX_SPEED = 20; 
+        const MAX_SPEED = 20;
 
         let boxes = []; 
         const btn = document.getElementById('startBtn');
@@ -127,36 +127,33 @@
                     if (!b.isDragging) {
                         b.vx -= ag.x * 0.6 * flip; 
                         b.vy += ag.y * 0.6 * flip;
+                        
+                        // 激しく動いているとき（加速度が一定以上の時）だけ、速度に応じて回転を加える
+                        const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+                        if (speed > 5) {
+                            b.va += (b.vx * 0.05); // 横の動きに合わせて回転
+                        }
                     }
                 });
             });
 
             function update() {
-                for (let iter = 0; iter < 3; iter++) {
-                    for (let i = 0; i < boxes.length; i++) {
-                        for (let j = i + 1; j < boxes.length; j++) {
-                            let a = boxes[i], b = boxes[j];
-                            if (a.h === 0 || b.h === 0) continue;
-                            let dx = (b.px + b.w/2) - (a.px + a.w/2);
-                            let dy = (b.py + b.h/2) - (a.py + a.h/2);
-                            let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            let minDist = (a.w + b.w) * 0.48; 
-                            if (dist < minDist) {
-                                let overlap = minDist - dist;
-                                let nx = dx / dist;
-                                let ny = dy / dist;
-                                let ratio = 0.7;
-                                if (!a.isDragging) {
-                                    a.px -= nx * overlap * ratio;
-                                    a.py -= ny * overlap * ratio;
-                                    a.vx -= nx * 0.4;
-                                }
-                                if (!b.isDragging) {
-                                    b.px += nx * overlap * ratio;
-                                    b.py += ny * overlap * ratio;
-                                    b.vx += nx * 0.4;
-                                }
-                            }
+                // シンプルな衝突判定のみ（気持ち悪い「強力な押し出し」を削除）
+                for (let i = 0; i < boxes.length; i++) {
+                    for (let j = i + 1; j < boxes.length; j++) {
+                        let a = boxes[i], b = boxes[j];
+                        if (a.h === 0 || b.h === 0) continue;
+                        
+                        let dx = (b.px + b.w/2) - (a.px + a.w/2);
+                        let dy = (b.py + b.h/2) - (a.py + a.h/2);
+                        let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        let minDist = (a.w + b.w) * 0.45;
+
+                        if (dist < minDist) {
+                            let nx = dx / dist;
+                            let ny = dy / dist;
+                            if (!a.isDragging) { a.vx -= nx * 0.2; a.vy -= ny * 0.2; }
+                            if (!b.isDragging) { b.vx += nx * 0.2; b.vy += ny * 0.2; }
                         }
                     }
                 }
@@ -167,13 +164,6 @@
                         b.vx *= FRICTION;
                         b.vy *= FRICTION;
                         b.va *= ROT_FRICTION;
-
-                        let speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-                        if (speed > 5) { 
-                            b.va += b.vx * 0.03; 
-                        }
-                        
-                        b.va = Math.min(Math.max(b.va, -10), 10);
 
                         b.vx = Math.min(Math.max(b.vx, -MAX_SPEED), MAX_SPEED);
                         b.vy = Math.min(Math.max(b.vy, -MAX_SPEED), MAX_SPEED);
