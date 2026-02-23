@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シャカシャカアプリ</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #f0f0f0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        /* 動かす対象（絵文字） */
+        #emoji {
+            font-size: 80px; /* 大きさ */
+            position: absolute;
+            user-select: none;
+        }
+        button { z-index: 10; padding: 20px 40px; font-size: 20px; border-radius: 15px; background: #007AFF; color: white; border: none; }
+    </style>
+</head>
+<body>
+
+    <button id="startBtn">アプリを起動 🚀</button>
+    <div id="emoji">🐱</div> <script>
+        let x = window.innerWidth / 2;
+        let y = window.innerHeight / 2;
+        const emoji = document.getElementById('emoji');
+        const btn = document.getElementById('startBtn');
+
+        btn.addEventListener('click', function() {
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission().then(state => {
+                    if (state === 'granted') start();
+                }).catch(err => alert("エラー: " + err));
+            } else {
+                start();
+            }
+            btn.style.display = 'none';
+        });
+
+        function start() {
+            window.addEventListener("devicemotion", (e) => {
+                let acc = e.acceleration;
+                if(!acc || !acc.x) return;
+
+                // 振った強さに応じて移動
+                x -= acc.x * 8;
+                y += acc.y * 8;
+
+                // 画面からはみ出さない処理
+                if (x < 0) x = 0;
+                if (x > window.innerWidth - 80) x = window.innerWidth - 80;
+                if (y < 0) y = 0;
+                if (y > window.innerHeight - 80) y = window.innerHeight - 80;
+
+                emoji.style.left = x + 'px';
+                emoji.style.top = y + 'px';
+            }, true);
+        }
+    </script>
+</body>
+</html>
