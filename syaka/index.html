@@ -2,57 +2,77 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>シャカシャカアプリ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>シャカシャカアプリ完成版</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #f0f0f0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        /* 動かす対象（絵文字） */
-        #emoji {
-            font-size: 80px; /* 大きさ */
-            position: absolute;
-            user-select: none;
+        /* 画面を固定してスクロールさせない */
+        html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; position: fixed; background: #e0e0e0;
         }
-        button { z-index: 10; padding: 20px 40px; font-size: 20px; border-radius: 15px; background: #007AFF; color: white; border: none; }
+        #emoji {
+            font-size: 80px; position: absolute;
+            will-change: transform; /* 動きをスムーズにするおまじない */
+        }
+        button {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px; font-size: 20px; z-index: 100;
+            border-radius: 50px; border: none; background: #333; color: white;
+        }
     </style>
 </head>
 <body>
 
-    <button id="startBtn">アプリを起動 🚀</button>
-    <div id="emoji">🐱</div> <script>
-        let x = window.innerWidth / 2;
-        let y = window.innerHeight / 2;
+    <button id="startBtn">シャカシャカ開始！ 🔥</button>
+    <div id="emoji">🐱</div>
+
+    <script>
+        let px = window.innerWidth / 2;
+        let py = window.innerHeight / 2;
+        let vx = 0; // 横方向の速度
+        let vy = 0; // 縦方向の速度
+        
         const emoji = document.getElementById('emoji');
         const btn = document.getElementById('startBtn');
 
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', () => {
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                DeviceMotionEvent.requestPermission().then(state => {
-                    if (state === 'granted') start();
-                }).catch(err => alert("エラー: " + err));
-            } else {
-                start();
-            }
+                DeviceMotionEvent.requestPermission().then(state => { if (state === 'granted') run(); });
+            } else { run(); }
             btn.style.display = 'none';
         });
 
-        function start() {
+        function run() {
+            // 重力と振りを検知（gravity を含む値を使用）
             window.addEventListener("devicemotion", (e) => {
-                let acc = e.acceleration;
-                if(!acc || !acc.x) return;
+                let ag = e.accelerationIncludingGravity;
+                if (!ag.x) return;
 
-                // 振った強さに応じて移動
-                x -= acc.x * 8;
-                y += acc.y * 8;
+                // 1. スマホの傾きと振りを速度に変える
+                vx -= ag.x * 1.5; 
+                vy += ag.y * 1.5;
+            });
 
-                // 画面からはみ出さない処理
-                if (x < 0) x = 0;
-                if (x > window.innerWidth - 80) x = window.innerWidth - 80;
-                if (y < 0) y = 0;
-                if (y > window.innerHeight - 80) y = window.innerHeight - 80;
+            function update() {
+                // 2. 摩擦（だんだん止まるようにする）
+                vx *= 0.95;
+                vy *= 0.95;
 
-                emoji.style.left = x + 'px';
-                emoji.style.top = y + 'px';
-            }, true);
+                px += vx;
+                py += vy;
+
+                // 3. 壁に当たったら跳ね返る
+                const size = 80;
+                if (px < 0) { px = 0; vx *= -0.8; }
+                if (px > window.innerWidth - size) { px = window.innerWidth - size; vx *= -0.8; }
+                if (py < 0) { py = 0; vy *= -0.8; }
+                if (py > window.innerHeight - size) { py = window.innerHeight - size; vy *= -0.8; }
+
+                emoji.style.transform = `translate(${px}px, ${py}px)`;
+                requestAnimationFrame(update); // スムーズにループ
+            }
+            update();
         }
     </script>
 </body>
