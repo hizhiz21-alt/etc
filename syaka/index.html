@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャカシャカするやつ</title>
+    <title>シャカシャカ</title>
     <style>
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; background: #f0f0f0; touch-action: none; }
         .box { position: absolute; will-change: transform; left: 0; top: 0; cursor: grab; display: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); }
@@ -25,12 +25,11 @@
         const smallSize = 100;   
         const gachaCount = 10;   
         
-        // 物理パラメータ（一切変えていません）
         const FRICTION = 0.95;      
         const ROT_FRICTION = 0.92;  
         const BOUNCE = 0.3;         
         const GRAVITY = 0.6;        
-        const MAX_SPEED = 20; 
+        const MAX_SPEED = 15;       
 
         let boxes = []; 
         const btn = document.getElementById('startBtn');
@@ -68,8 +67,8 @@
             window.addEventListener('touchmove', (e) => {
                 if (!data.isDragging) return;
                 let touch = e.touches[0];
-                data.vx = (touch.clientX - (data.w / 2) - data.px) * 0.3;
-                data.vy = (touch.clientY - (data.h / 2) - data.py) * 0.3;
+                data.vx = (touch.clientX - (data.w / 2) - data.px) * 0.2;
+                data.vy = (touch.clientY - (data.h / 2) - data.py) * 0.2;
                 data.px = touch.clientX - (data.w / 2);
                 data.py = touch.clientY - (data.h / 2);
             }, {passive: false});
@@ -80,10 +79,10 @@
 
         function dropBox(b) {
             b.px = Math.random() * (window.innerWidth - b.w);
-            b.py = -200 - (Math.random() * 400); 
-            b.vx = (Math.random() - 0.5) * 15;
-            b.vy = 5 + Math.random() * 10;
-            b.va = (Math.random() - 0.5) * 10;
+            b.py = -300 - (Math.random() * 500); 
+            b.vx = (Math.random() - 0.5) * 10;
+            b.vy = 10 + Math.random() * 10;
+            b.va = (Math.random() - 0.5) * 5;
             b.el.style.display = 'block';
         }
 
@@ -126,42 +125,41 @@
                 if(!ag || ag.x === null) return;
                 boxes.forEach(b => { 
                     if (!b.isDragging) {
-                        b.vx -= ag.x * 0.6 * flip; 
-                        b.vy += ag.y * 0.6 * flip;
+                        b.vx -= ag.x * 0.5 * flip; 
+                        b.vy += ag.y * 0.5 * flip;
                     }
                 });
             });
 
             function update() {
-                for (let iter = 0; iter < 3; iter++) {
+                // 1. 衝突判定（バグ修正済みの安定版）
+                for (let iter = 0; iter < 2; iter++) { 
                     for (let i = 0; i < boxes.length; i++) {
                         for (let j = i + 1; j < boxes.length; j++) {
                             let a = boxes[i], b = boxes[j];
                             if (a.h === 0 || b.h === 0) continue;
                             let dx = (b.px + b.w/2) - (a.px + a.w/2);
                             let dy = (b.py + b.h/2) - (a.py + a.h/2);
-                            let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            let minDist = (a.w + b.w) * 0.48; 
+                            let dist = Math.sqrt(dx * dx + dy * dy);
+                            let minDist = (a.w + b.w) * 0.45; 
                             if (dist < minDist) {
-                                let overlap = minDist - dist;
+                                let overlap = (minDist - dist) * 0.8;
                                 let nx = dx / dist;
                                 let ny = dy / dist;
-                                let ratio = 0.7;
-                                if (!a.isDragging) {
-                                    a.px -= nx * overlap * ratio;
-                                    a.py -= ny * overlap * ratio;
-                                    a.vx -= nx * 0.4;
+                                if (!a.isDragging) { 
+                                    a.px -= nx * overlap * 0.5; a.py -= ny * overlap * 0.5; 
+                                    a.vx -= nx * 0.2; a.vy -= ny * 0.2; 
                                 }
-                                if (!b.isDragging) {
-                                    b.px += nx * overlap * ratio;
-                                    b.py += ny * overlap * ratio;
-                                    b.vx += nx * 0.4;
+                                if (!b.isDragging) { 
+                                    b.px += nx * overlap * 0.5; b.py += ny * overlap * 0.5; 
+                                    b.vx += nx * 0.2; b.vy += ny * 0.2; 
                                 }
                             }
                         }
                     }
                 }
 
+                // 2. 移動と適度な回転
                 boxes.forEach(b => {
                     if (!b.isDragging) {
                         b.vy += GRAVITY;
@@ -169,8 +167,12 @@
                         b.vy *= FRICTION;
                         b.va *= ROT_FRICTION;
 
-                        // ★ここを追加：移動に合わせて回転を加える
-                        b.va += b.vx * 0.1;
+                        // ★ここ：動いている時だけ適度に回るように追加
+                        if (Math.abs(b.vx) > 0.1) b.va += b.vx * 0.05;
+                        if (Math.abs(b.vx) < 0.2 && Math.abs(b.vy) < 0.2) b.va *= 0.8; 
+
+                        b.vx = Math.min(Math.max(b.vx, -MAX_SPEED), MAX_SPEED);
+                        b.vy = Math.min(Math.max(b.vy, -MAX_SPEED), MAX_SPEED);
 
                         b.px += b.vx;
                         b.py += b.vy;
@@ -182,7 +184,7 @@
                         if (b.px < 0) { b.px = 0; b.vx *= -BOUNCE; b.va *= 0.5; }
                         if (b.px > rw) { b.px = rw; b.vx *= -BOUNCE; b.va *= 0.5; }
                         if (b.py > bh) { 
-                            b.py = bh; b.vy *= -BOUNCE; 
+                            b.py = bh; b.vy *= -BOUNCE; b.va *= 0.5;
                             if (Math.abs(b.vy) < 1) b.vy = 0;
                         }
                         if (b.py < -1000) b.py = -1000;
