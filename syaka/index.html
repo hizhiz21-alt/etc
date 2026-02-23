@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャカシャカするやつ</title>
+    <title>シャカシャカ</title>
     <style>
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; background: #f0f0f0; touch-action: none; }
         .box { position: absolute; will-change: transform; left: 0; top: 0; cursor: grab; display: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); }
@@ -25,7 +25,7 @@
         const smallSize = 100;   
         const gachaCount = 10;   
         
-        // 物理パラメータ
+        // 物理パラメータ（元の数値を維持）
         const FRICTION = 0.95;      
         const ROT_FRICTION = 0.92;  
         const BOUNCE = 0.3;         
@@ -128,38 +128,46 @@
                     if (!b.isDragging) {
                         b.vx -= ag.x * 0.5 * flip; 
                         b.vy += ag.y * 0.5 * flip;
-                        // 傾きによる不自然な回転加速を削除し、移動速度に依存させる
                     }
                 });
             });
 
             function update() {
-                // 1. 衝突判定と重なり強制解消
-                for (let i = 0; i < boxes.length; i++) {
-                    for (let j = i + 1; j < boxes.length; j++) {
-                        let a = boxes[i], b = boxes[j];
-                        if (a.h === 0 || b.h === 0) continue;
-                        
-                        let dx = (b.px + b.w/2) - (a.px + a.w/2);
-                        let dy = (b.py + b.h/2) - (a.py + a.h/2);
-                        let dist = Math.sqrt(dx * dx + dy * dy);
-                        let minDist = (a.w + b.w) * 0.42; 
-
-                        if (dist < minDist) {
-                            let overlap = minDist - dist;
-                            let nx = dx / dist;
-                            let ny = dy / dist;
+                // スタック防止のための反復計算（2回実施）
+                for (let iter = 0; iter < 2; iter++) {
+                    for (let i = 0; i < boxes.length; i++) {
+                        for (let j = i + 1; j < boxes.length; j++) {
+                            let a = boxes[i], b = boxes[j];
+                            if (a.h === 0 || b.h === 0) continue;
                             
-                            // 座標を直接ずらしてスタックを殺す
-                            if (!a.isDragging) { a.px -= nx * overlap * 0.5; a.py -= ny * overlap * 0.5; a.vx -= nx * 0.5; a.vy -= ny * 0.5; }
-                            if (!b.isDragging) { b.px += nx * overlap * 0.5; b.py += ny * overlap * 0.5; b.vx += nx * 0.5; b.vy += ny * 0.5; }
-                            // ぶつかった時に少しだけ回転を与える
-                            a.va -= nx * 0.1; b.va += nx * 0.1;
+                            let dx = (b.px + b.w/2) - (a.px + a.w/2);
+                            let dy = (b.py + b.h/2) - (a.py + a.h/2);
+                            let dist = Math.sqrt(dx * dx + dy * dy);
+                            // 判定距離をわずかに調整して隙間を確保
+                            let minDist = (a.w + b.w) * 0.45; 
+
+                            if (dist < minDist) {
+                                let overlap = (minDist - dist) * 0.5;
+                                let nx = dx / dist;
+                                let ny = dy / dist;
+                                
+                                if (!a.isDragging) { 
+                                    a.px -= nx * overlap; 
+                                    a.py -= ny * overlap; 
+                                    a.vx -= nx * 0.1; 
+                                    a.vy -= ny * 0.1; 
+                                }
+                                if (!b.isDragging) { 
+                                    b.px += nx * overlap; 
+                                    b.py += ny * overlap; 
+                                    b.vx += nx * 0.1; 
+                                    b.vy += ny * 0.1; 
+                                }
+                            }
                         }
                     }
                 }
 
-                // 2. 移動と壁判定
                 boxes.forEach(b => {
                     if (!b.isDragging) {
                         b.vy += GRAVITY;
@@ -167,7 +175,6 @@
                         b.vy *= FRICTION;
                         b.va *= ROT_FRICTION;
 
-                        // 速度制限
                         b.vx = Math.min(Math.max(b.vx, -MAX_SPEED), MAX_SPEED);
                         b.vy = Math.min(Math.max(b.vy, -MAX_SPEED), MAX_SPEED);
 
@@ -175,7 +182,6 @@
                         b.py += b.vy;
                         b.angle += b.va;
 
-                        // 壁と床
                         const rw = window.innerWidth - b.w;
                         const bh = window.innerHeight - b.h;
 
@@ -183,10 +189,10 @@
                         if (b.px > rw) { b.px = rw; b.vx *= -BOUNCE; b.va *= 0.5; }
                         if (b.py > bh) { 
                             b.py = bh; b.vy *= -BOUNCE; 
-                            b.va *= 0.5; // 床に接したら回転を殺す
+                            b.va *= 0.5;
                             if (Math.abs(b.vy) < 1) b.vy = 0;
                         }
-                        if (b.py < -1000) b.py = -1000; // 上に飛び出しすぎ防止
+                        if (b.py < -1000) b.py = -1000;
                     }
                     b.el.style.transform = `translate(${b.px}px, ${b.py}px) rotate(${b.angle}deg)`;
                 });
