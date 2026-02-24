@@ -28,7 +28,7 @@
         const FRICTION = 0.93;      
         const ROT_FRICTION = 0.85; 
         const BOUNCE = 0.6;        
-        const GRAVITY = 0.25;        
+        const GRAVITY = 0.15;        
         const MAX_SPEED = 6;
 
         let boxes = []; 
@@ -95,7 +95,7 @@
             b.px = Math.random() * (window.innerWidth - b.w);
             b.py = -200 - (Math.random() * 400); 
             b.vx = (Math.random() - 0.5) * 15;
-            b.vy = 5 + Math.random() * 10;
+            b.vy = 5 + Math.random() * 5;
             b.va = (Math.random() - 0.5) * 20; 
             b.el.style.display = 'block';
         }
