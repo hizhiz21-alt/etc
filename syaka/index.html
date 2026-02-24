@@ -64,7 +64,7 @@
                 w: currentWidth, h: 0,
                 isDragging: false,
                 isInitial: isInitial,
-                initialZ: zIndex
+                initialZ: zIndex 
             };
             img.onload = () => { data.h = currentWidth * (img.naturalHeight / img.naturalWidth); };
             
@@ -89,18 +89,19 @@
             window.addEventListener('touchend', () => { 
                 if (!data.isDragging) return;
                 data.isDragging = false; 
-                div.style.zIndex = data.initialZ;
+                div.style.zIndex = data.initialZ; 
             });
             boxes.push(data);
             return data;
         }
 
+        // ここが修正の肝です：静かに、すぐ上から出現するようにしました
         function dropBox(b) {
             b.px = Math.random() * (window.innerWidth - b.w);
-            b.py = -b.h; 
-            b.vx = (Math.random() - 0.5) * 2;
-            b.vy = 1;
-            b.va = (Math.random() - 0.5) * 5; 
+            b.py = -b.h - 10;    // 画面のすぐ上
+            b.vx = 0;            // 横の勢いを排除
+            b.vy = 0.5;          // ゆっくりと落下開始
+            b.va = 0;            // 回転させない
             b.el.style.display = 'block';
         }
 
@@ -150,8 +151,6 @@
                     if (!b.isDragging) {
                         b.vx -= ag.x * 0.6 * flip; 
                         b.vy += ag.y * 0.6 * flip;
-                        const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-                        if (speed > 8) b.va += (b.vx * 0.04); 
                     }
                 });
             });
@@ -186,9 +185,10 @@
                         }
                     }
                 }
+
                 boxes.forEach(b => {
                     if (!b.isDragging) {
-                        if (Math.abs(b.vx) < 0.8 && Math.abs(b.vy) < 0.8) {
+                        if (Math.abs(b.vx) < 0.1 && Math.abs(b.vy) < 0.1) {
                             b.vx = 0; b.vy = 0; b.va = 0; 
                         } else {
                             b.vy += GRAVITY;
