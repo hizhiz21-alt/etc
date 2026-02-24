@@ -27,7 +27,7 @@
         
         const FRICTION = 0.9;      
         const ROT_FRICTION = 0.85; 
-        const BOUNCE = 0.3;        
+        const BOUNCE = 0.4;        
         const GRAVITY = 0.3;        
         const MAX_SPEED = 8;
 
@@ -160,9 +160,8 @@
                             let dx = (b.px + b.w/2) - (a.px + a.w/2);
                             let dy = (b.py + b.h/2) - (a.py + a.h/2);
                             let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            
-                            // 修正1：minDistを0.5に変更
-                            let minDist = (a.w + b.w) * 0.5;
+                    
+                            let minDist = (a.w + b.w) * 0.47;
 
                             if (dist < minDist) {
                                 let overlap = minDist - dist;
@@ -183,8 +182,7 @@
                                         b.va *= 0.6;
                                     }
                                 }
-                                
-                                // 修正2：押し戻し係数を0.5に変更
+                            
                                 let moveX = nx * overlap * 0.5;
                                 let moveY = ny * overlap * 0.5;
                                 if (!a.isDragging) { a.px -= moveX; a.py -= moveY; }
@@ -196,7 +194,6 @@
 
                 boxes.forEach(b => {
                     if (!b.isDragging) {
-                        // 修正3：停止判定を0.8に厳しく変更
                         if (Math.abs(b.vx) < 0.8 && Math.abs(b.vy) < 0.8) {
                             b.vx = 0; b.vy = 0; b.va = 0; 
                         } else {
