@@ -31,7 +31,7 @@
         const GRAVITY = 0.6;        
 
         let boxes = []; 
-        let currentAccel = 0; // 現在の振りの強さを記録
+        let currentAccel = 0; 
         const btn = document.getElementById('startBtn');
         const controls = document.getElementById('controls');
         const addBtn = document.getElementById('addBtn');
@@ -75,7 +75,7 @@
                 data.vy = (touch.clientY - (data.h / 2) - data.py) * 0.3;
                 data.px = touch.clientX - (data.w / 2);
                 data.py = touch.clientY - (data.h / 2);
-                data.va = data.vx * 0.5;
+                data.va = data.vx * 0.5; // ドラッグ時に回す
             }, {passive: false});
             window.addEventListener('touchend', () => { 
                 data.isDragging = false; 
@@ -131,20 +131,17 @@
             window.addEventListener("devicemotion", (e) => {
                 let ag = e.accelerationIncludingGravity;
                 if(!ag || ag.x === null) return;
-                
                 let ax = -ag.x * 0.6 * flip;
                 let ay = ag.y * 0.6 * flip;
-                
-                // 揺れの強さを常に更新
                 currentAccel = Math.sqrt(ax * ax + ay * ay);
 
                 boxes.forEach(b => { 
                     if (!b.isDragging) {
                         b.vx += ax; 
                         b.vy += ay;
-                        // 振っているとき(閾値1.5以上)だけ回転速度を加算する
+                        // スマホを振っている時は「回転」を追加する
                         if (currentAccel > 1.5) {
-                            b.va += ax * 0.1;
+                            b.va += ax * 0.12; 
                         }
                     }
                 });
@@ -166,10 +163,10 @@
                                 let nx = dx / dist;
                                 let ny = dy / dist;
                                 
-                                // 重なりによるエネルギー増幅を防ぐ(置いてあるときは回転を即座に殺す)
+                                // 重なっている最中に「振っていない」なら、のたうち回り防止のために少し減衰させる
                                 if (currentAccel < 1.0) {
-                                    a.va *= 0.5;
-                                    b.va *= 0.5;
+                                    a.va *= 0.6;
+                                    b.va *= 0.6;
                                 }
 
                                 let rvx = b.vx - a.vx;
@@ -209,16 +206,15 @@
                         if (b.py >= bh) { 
                             b.py = bh; 
                             b.vy *= -BOUNCE; 
-                            // 静止判定を強化
-                            if (currentAccel < 1.0 && Math.abs(b.vx) < 0.5) {
+                            // 完全に静止している時は、回転も物理的にゼロ固定
+                            if (currentAccel < 0.5 && Math.abs(b.vx) < 0.3) {
                                 b.va = 0;
                                 b.vx = 0;
                             }
                         }
 
-                        // 置いている時で、速度が低い時は「完全に固定」する
-                        // 動画のようなのたうち回るバグはここを通ることで根絶されます
-                        if (currentAccel < 1.0 && Math.abs(b.vx) < 0.2 && Math.abs(b.vy) < 0.2) {
+                        // 置いている状態で、動きが止まったら「のたうち回りバグ」が起きないようにロック
+                        if (currentAccel < 0.5 && Math.abs(b.vx) < 0.1 && Math.abs(b.vy) < 0.1) {
                             b.vx = 0;
                             b.vy = 0;
                             b.va = 0;
