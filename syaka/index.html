@@ -65,7 +65,7 @@
             
             div.addEventListener('touchstart', (e) => { 
                 data.isDragging = true; 
-                data.angle = 0; // 掴んだ時に向きを直す
+                data.angle = 0; 
                 data.va = 0;
                 div.style.zIndex = 10000;
                 e.preventDefault(); 
@@ -78,8 +78,8 @@
                 data.px = touch.clientX - (data.w / 2);
                 data.py = touch.clientY - (data.h / 2);
                 
-                data.vx = data.px - lastX; // 移動速度を更新
-                data.angle = data.vx * 1.5; // 振るとゆらゆらする
+                data.vx = data.px - lastX; 
+                data.angle = data.vx * 1.5; 
             }, {passive: false});
 
             window.addEventListener('touchend', () => { 
@@ -124,7 +124,6 @@
                 if (!b.isInitial) {
                     b.el.remove();
                 } else {
-                    // 画像3が置き換わらないよう、ガチャ画像(4-6)のみ判定
                     if (b.img.src.match(/[4-6]\.png$/)) {
                         b.img.src = `${pickGachaImage()}.png`;
                     }
@@ -161,7 +160,9 @@
                             let dx = (b.px + b.w/2) - (a.px + a.w/2);
                             let dy = (b.py + b.h/2) - (a.py + a.h/2);
                             let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            let minDist = (a.w + b.w) * 0.45;
+                            
+                            // 修正1：minDistを0.5に変更
+                            let minDist = (a.w + b.w) * 0.5;
 
                             if (dist < minDist) {
                                 let overlap = minDist - dist;
@@ -182,8 +183,10 @@
                                         b.va *= 0.6;
                                     }
                                 }
-                                let moveX = nx * overlap * 0.2;
-                                let moveY = ny * overlap * 0.2;
+                                
+                                // 修正2：押し戻し係数を0.5に変更
+                                let moveX = nx * overlap * 0.5;
+                                let moveY = ny * overlap * 0.5;
                                 if (!a.isDragging) { a.px -= moveX; a.py -= moveY; }
                                 if (!b.isDragging) { b.px += moveX; b.py += moveY; }
                             }
@@ -193,7 +196,8 @@
 
                 boxes.forEach(b => {
                     if (!b.isDragging) {
-                        if (Math.abs(b.vx) < 0.4 && Math.abs(b.vy) < 0.4) {
+                        // 修正3：停止判定を0.8に厳しく変更
+                        if (Math.abs(b.vx) < 0.8 && Math.abs(b.vy) < 0.8) {
                             b.vx = 0; b.vy = 0; b.va = 0; 
                         } else {
                             b.vy += GRAVITY;
