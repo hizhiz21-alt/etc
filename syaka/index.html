@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>シャカシャカ</title>
+    <title>シャカ</title>
     <style>
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; background: #f0f0f0; touch-action: none; }
         .box { position: absolute; will-change: transform; left: 0; top: 0; cursor: grab; display: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25)); }
@@ -26,7 +26,7 @@
         const gachaCount = 10;   
         
         const FRICTION = 0.95;      
-        const ROT_FRICTION = 0.85; // 振った時の回転維持のため少し戻しました
+        const ROT_FRICTION = 0.85; // 空中での回転を維持するため
         const BOUNCE = 0.2;        
         const GRAVITY = 0.6;        
         const MAX_SPEED = 20;
@@ -89,7 +89,7 @@
             b.py = -200 - (Math.random() * 400); 
             b.vx = (Math.random() - 0.5) * 15;
             b.vy = 5 + Math.random() * 10;
-            b.va = (Math.random() - 0.5) * 15; // 勢いよく回るように
+            b.va = (Math.random() - 0.5) * 15;
             b.el.style.display = 'block';
         }
 
@@ -135,7 +135,7 @@
                         b.vx -= ag.x * 0.6 * flip; 
                         b.vy += ag.y * 0.6 * flip;
                         const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-                        if (speed > 5) b.va += (b.vx * 0.1); // 振った時の回転を強化
+                        if (speed > 5) b.va += (b.vx * 0.1); 
                     }
                 });
             });
@@ -150,7 +150,7 @@
                             let dx = (b.px + b.w/2) - (a.px + a.w/2);
                             let dy = (b.py + b.h/2) - (a.py + a.h/2);
                             let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            let minDist = (a.w + b.w) * 0.48;
+                            let minDist = (a.w + b.w) * 0.45;
 
                             if (dist < minDist) {
                                 let overlap = minDist - dist;
@@ -165,6 +165,12 @@
                                     let j_impulse = -(1 + BOUNCE) * velAlongNormal * 0.5;
                                     if (!a.isDragging) { a.vx -= nx * j_impulse; a.vy -= ny * j_impulse; }
                                     if (!b.isDragging) { b.vx += nx * j_impulse; b.vy += ny * j_impulse; }
+                                    
+                                    // 衝突したとき、勢いが弱ければ回転にブレーキをかけて「自走」を防ぐ
+                                    if (Math.abs(velAlongNormal) < 1.0) {
+                                        a.va *= 0.8;
+                                        b.va *= 0.8;
+                                    }
                                 }
                                 let moveX = nx * overlap * 0.5;
                                 let moveY = ny * overlap * 0.5;
@@ -177,21 +183,21 @@
 
                 boxes.forEach(b => {
                     if (!b.isDragging) {
-                        // ★修正：速度が極小なら物理計算を停止（重力も回転も無視）
-                        if (Math.abs(b.vx) < 0.3 && Math.abs(b.vy) < 0.3) {
+                        // 速度が極小なら物理演算をスリープさせてピタッと止める
+                        if (Math.abs(b.vx) < 0.25 && Math.abs(b.vy) < 0.25) {
                             b.vx = 0;
                             b.vy = 0;
-                            b.va = 0;
+                            b.va = 0; 
                         } else {
-                            b.vy += GRAVITY; // 動いている時だけ重力をかける
+                            b.vy += GRAVITY; // 空中にいる時だけ重力をかける
                         }
 
                         b.vx *= FRICTION;
                         b.vy *= FRICTION;
                         b.va *= ROT_FRICTION;
 
-                        b.vx = Math.min(Math.max(b.vx, -MAX_SPEED), MAX_SPEED);
-                        b.vy = Math.min(Math.max(b.vy, -MAX_SPEED), MAX_SPEED);
+                        // 回転が弱まったら強制停止
+                        if (Math.abs(b.va) < 0.3) b.va = 0;
 
                         b.px += b.vx;
                         b.py += b.vy;
@@ -200,11 +206,14 @@
                         const rw = window.innerWidth - b.w;
                         const bh = window.innerHeight - b.h;
 
-                        if (b.px < 0) { b.px = 0; b.vx *= -BOUNCE; }
-                        if (b.px > rw) { b.px = rw; b.vx *= -BOUNCE; }
+                        // 壁や地面との衝突。ここでも回転エネルギーを削って安定化させる
+                        if (b.px < 0) { b.px = 0; b.vx *= -BOUNCE; b.va *= 0.5; }
+                        if (b.px > rw) { b.px = rw; b.vx *= -BOUNCE; b.va *= 0.5; }
                         if (b.py > bh) { 
-                            b.py = bh; b.vy *= -BOUNCE; 
-                            if (Math.abs(b.vy) < 0.8) { b.vy = 0; b.va = 0; } // 着地時の回転停止
+                            b.py = bh; 
+                            b.vy *= -BOUNCE; 
+                            b.va *= 0.5;
+                            if (Math.abs(b.vy) < 1) { b.vy = 0; b.va = 0; }
                         }
                         if (b.py < -1000) b.py = -1000;
                     }
