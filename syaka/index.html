@@ -26,7 +26,6 @@
         const size = 150;        
         const smallSize = 100;   
         const gachaCount = 10;   
-    
         const FRICTION = 0.93;      
         const ROT_FRICTION = 0.85; 
         const BOUNCE = 0.6;        
@@ -36,7 +35,6 @@
         let glitters = [];
         const canvas = document.getElementById('glitterCanvas');
         const ctx = canvas.getContext('2d');
-
         const btn = document.getElementById('startBtn');
         const controls = document.getElementById('controls');
         const addBtn = document.getElementById('addBtn');
@@ -50,14 +48,14 @@
         resize();
 
         function createGlitter() {
-            glitters = []; // リセット
-            for(let i=0; i<80; i++) { // 酔い防止に少し数を絞りました
+            glitters = [];
+            for(let i=0; i<80; i++) {
                 glitters.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     vx: 0, vy: 0,
                     size: Math.random() * 2 + 1,
-                    color: `hsla(${Math.random() * 40 + 40}, 100%, 60%, ${Math.random() * 0.5 + 0.3})`, // ゴールド系のラメ
+                    color: `hsla(${Math.random() * 40 + 40}, 100%, 60%, ${Math.random() * 0.5 + 0.3})`,
                     phase: Math.random() * Math.PI * 2
                 });
             }
@@ -135,8 +133,8 @@
         btn.onclick = () => {
             createGlitter();
             boxes.forEach(b => dropBox(b));
-            if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                DeviceMotionEvent.requestPermission().then(run);
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission().then(run).catch(() => run());
             } else { run(); }
             btn.style.display = 'none';
             controls.style.display = 'flex';
@@ -163,43 +161,28 @@
         function run() {
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
             const flip = isIOS ? -1 : 1;
-
             let accelX = 0, accelY = 0;
+
             window.addEventListener("devicemotion", (e) => {
                 let ag = e.accelerationIncludingGravity;
                 if(!ag || ag.x === null) return;
                 accelX = ag.x * 0.6 * flip;
                 accelY = ag.y * 0.6 * flip;
-                boxes.forEach(b => { 
-                    if (!b.isDragging) {
-                        b.vx -= accelX; b.vy += accelY;
-                    }
-                });
+                boxes.forEach(b => { if (!b.isDragging) { b.vx -= accelX; b.vy += accelY; } });
             });
 
             function update() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 glitters.forEach(g => {
-                    // ラメもパーツと同じ重力と摩擦で計算！
-                    g.vx -= accelX * 0.1;
-                    g.vy += accelY * 0.1 + GRAVITY; 
-                    g.vx *= FRICTION;
-                    g.vy *= FRICTION;
-                    g.x += g.vx; g.y += g.vy;
-                    g.phase += 0.08;
-
-                    // 壁判定
+                    g.vx -= accelX * 0.1; g.vy += accelY * 0.1 + GRAVITY;
+                    g.vx *= FRICTION; g.vy *= FRICTION;
+                    g.x += g.vx; g.y += g.vy; g.phase += 0.08;
                     if(g.x < 0) { g.x = 0; g.vx *= -BOUNCE; }
                     if(g.x > canvas.width) { g.x = canvas.width; g.vx *= -BOUNCE; }
                     if(g.y > canvas.height) { g.y = canvas.height; g.vy *= -BOUNCE; }
                     if(g.y < 0) { g.y = 0; g.vy *= -BOUNCE; }
-
-                    const opacity = (Math.sin(g.phase) + 1) / 2;
-                    ctx.fillStyle = g.color;
-                    ctx.globalAlpha = opacity;
-                    ctx.beginPath();
-                    ctx.arc(g.x, g.y, g.size, 0, Math.PI*2);
-                    ctx.fill();
+                    ctx.fillStyle = g.color; ctx.globalAlpha = (Math.sin(g.phase) + 1) / 2;
+                    ctx.beginPath(); ctx.arc(g.x, g.y, g.size, 0, Math.PI*2); ctx.fill();
                 });
                 ctx.globalAlpha = 1.0;
 
