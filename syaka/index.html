@@ -144,6 +144,7 @@
                     if (!b.isDragging) {
                         b.vx -= ag.x * 0.6 * flip; 
                         b.vy += ag.y * 0.6 * flip;
+                        // ここでの速度計上と回転加算は維持
                         const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
                         if (speed > 8) b.va += (b.vx * 0.04); 
                     }
@@ -194,6 +195,13 @@
 
                 boxes.forEach(b => {
                     if (!b.isDragging) {
+                        const moveSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+
+                        // ★追加：横方向の動きを回転に変換（ moveSpeed判定を入れることで静止時の暴走を防ぐ）
+                        if (moveSpeed > 1) {
+                            b.va += b.vx * 0.1;
+                        }
+
                         if (Math.abs(b.vx) < 0.8 && Math.abs(b.vy) < 0.8) {
                             b.vx = 0; b.vy = 0; b.va = 0; 
                         } else {
