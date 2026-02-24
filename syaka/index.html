@@ -31,7 +31,7 @@
         const GRAVITY = 0.6;        
 
         let boxes = []; 
-        let currentAccel = 0; 
+        let isMoving = false; // 加速度センサーが動いているかどうかのフラグ
         const btn = document.getElementById('startBtn');
         const controls = document.getElementById('controls');
         const addBtn = document.getElementById('addBtn');
@@ -75,7 +75,6 @@
                 data.vy = (touch.clientY - (data.h / 2) - data.py) * 0.3;
                 data.px = touch.clientX - (data.w / 2);
                 data.py = touch.clientY - (data.h / 2);
-                data.va = data.vx * 0.5; // ドラッグ時に回す
             }, {passive: false});
             window.addEventListener('touchend', () => { 
                 data.isDragging = false; 
@@ -131,64 +130,28 @@
             window.addEventListener("devicemotion", (e) => {
                 let ag = e.accelerationIncludingGravity;
                 if(!ag || ag.x === null) return;
+                
                 let ax = -ag.x * 0.6 * flip;
                 let ay = ag.y * 0.6 * flip;
-                currentAccel = Math.sqrt(ax * ax + ay * ay);
+
+                // 加速度センサーが一定以上動いているか判定（1.2は閾値）
+                isMoving = Math.abs(ax) > 1.2 || Math.abs(ay) > 1.2;
 
                 boxes.forEach(b => { 
                     if (!b.isDragging) {
-                        b.vx += ax; 
-                        b.vy += ay;
-                        // スマホを振っている時は「回転」を追加する
-                        if (currentAccel > 1.5) {
-                            b.va += ax * 0.12; 
+                        if (isMoving) {
+                            b.vx += ax; 
+                            b.vy += ay;
+                            b.va += ax * 0.1; // 振ったときは回転を加える
                         }
                     }
                 });
             });
 
             function update() {
-                for (let step = 0; step < 2; step++) {
-                    for (let i = 0; i < boxes.length; i++) {
-                        for (let j = i + 1; j < boxes.length; j++) {
-                            let a = boxes[i], b = boxes[j];
-                            if (a.h === 0 || b.h === 0) continue;
-                            let dx = (b.px + b.w/2) - (a.px + a.w/2);
-                            let dy = (b.py + b.h/2) - (a.py + a.h/2);
-                            let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            let minDist = (a.w + b.w) * 0.48;
-
-                            if (dist < minDist) {
-                                let overlap = minDist - dist;
-                                let nx = dx / dist;
-                                let ny = dy / dist;
-                                
-                                // 重なっている最中に「振っていない」なら、のたうち回り防止のために少し減衰させる
-                                if (currentAccel < 1.0) {
-                                    a.va *= 0.6;
-                                    b.va *= 0.6;
-                                }
-
-                                let rvx = b.vx - a.vx;
-                                let rvy = b.vy - a.vy;
-                                let velAlongNormal = rvx * nx + rvy * ny;
-
-                                if (velAlongNormal < 0) {
-                                    let j_impulse = -(1 + BOUNCE) * velAlongNormal * 0.5;
-                                    if (!a.isDragging) { a.vx -= nx * j_impulse; a.vy -= ny * j_impulse; }
-                                    if (!b.isDragging) { b.vx += nx * j_impulse; b.vy += ny * j_impulse; }
-                                }
-                                let moveX = nx * overlap * 0.5;
-                                let moveY = ny * overlap * 0.5;
-                                if (!a.isDragging) { a.px -= moveX; a.py -= moveY; }
-                                if (!b.isDragging) { b.px += moveX; b.py += moveY; }
-                            }
-                        }
-                    }
-                }
-
+                // 振っているとき、またはドラッグ中のときだけ物理演算を行う
                 boxes.forEach(b => {
-                    if (!b.isDragging) {
+                    if (b.isDragging || isMoving || Math.abs(b.vx) > 0.5 || Math.abs(b.vy) > 0.5) {
                         b.vy += GRAVITY;
                         b.vx *= FRICTION;
                         b.vy *= FRICTION;
@@ -206,15 +169,16 @@
                         if (b.py >= bh) { 
                             b.py = bh; 
                             b.vy *= -BOUNCE; 
-                            // 完全に静止している時は、回転も物理的にゼロ固定
-                            if (currentAccel < 0.5 && Math.abs(b.vx) < 0.3) {
-                                b.va = 0;
+                            // 振っていない状態でのバウンドが終わったら完全停止
+                            if (!isMoving && Math.abs(b.vy) < 1.0) {
+                                b.vy = 0;
                                 b.vx = 0;
+                                b.va = 0;
                             }
                         }
 
-                        // 置いている状態で、動きが止まったら「のたうち回りバグ」が起きないようにロック
-                        if (currentAccel < 0.5 && Math.abs(b.vx) < 0.1 && Math.abs(b.vy) < 0.1) {
+                        // 【最重要】加速度センサーに反応がないときは一切の動きを殺す
+                        if (!isMoving && Math.abs(b.vx) < 0.2 && Math.abs(b.vy) < 0.2) {
                             b.vx = 0;
                             b.vy = 0;
                             b.va = 0;
