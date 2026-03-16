@@ -190,9 +190,13 @@
                                     if (!b.isDragging) { b.vx += nx * j_impulse; b.vy += ny * j_impulse; }
                                     
                                     if (Math.abs(velAlongNormal) < 1.5) {
-                                        a.va *= 0.6;
-                                        b.va *= 0.6;
-                                    }
+                            a.va *= 0.3;
+                            b.va *= 0.3;
+                            a.vx *= 0.5;
+                            a.vy *= 0.5;
+                            b.vx *= 0.5;
+                            b.vy *= 0.5;
+                                                }
                                 }
                             
                                 let moveX = nx * overlap * 0.5;
