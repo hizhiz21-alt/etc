@@ -154,8 +154,8 @@
                 if(!ag || ag.x === null) return;
                 boxes.forEach(b => { 
                     if (!b.isDragging) {
-                        b.vx -= ag.x * 0.15 * flip; 
-                        b.vy += ag.y * 0.15 * flip;
+                        b.vx -= ag.x * 0.25 * flip; 
+                        b.vy += ag.y * 0.25 * flip;
                         const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
                         if (speed > 8) b.va += (b.vx * 0.04); 
                     }
@@ -212,7 +212,7 @@
                             b.va += b.vx * 0.1;
                         }
 
-                        if (Math.abs(b.vx) < 0.8 && Math.abs(b.vy) < 0.8) {
+                        if (Math.abs(b.vx) < 1.5 && Math.abs(b.vy) < 0.8) {
                             b.vx = 0; b.vy = 0; b.va = 0; 
                         } else {
                             b.vy += GRAVITY;
